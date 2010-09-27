@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# Usage: modify the pre_test, run_test and post_test functions below to prepare and run the test to be performed by 'git bisect'.
+# Then:
+#   git bisect start HEAD v1.2 --      # HEAD is bad, v1.2 is good
+#   git bisect run /data/bin/git-bisect-run /data/src/jaybird
+
+# Modify to set up after bisect checks out a commit. Return value ignored.
+pre_test () {
+    git clean -d -x -f
+}
+
+# Modify to run the test and return a zero result if successful.
+run_test () {
+    # ant "-Dproduct.release-status=" hudson-full
+
+    testname=ContinuationServerSerializationTest
+    testtype=integration
+
+    # Note shell-expansion wildcard - must be unquoted when referenced (but can only expand after 'ant' command runs)
+    resultfile="docs/reports/${testtype}/TEST-*${testname}.xml"
+
+    ant "-Dpattern=${testname}.java" test-${testtype} \
+        && [ -f ${resultfile} ] \
+        && grep -q 'errors="0" failures="0"' ${resultfile}
+
+    return $?
+}
+
+# Modify to clean up after bisect runs the test. Return value ignored.
+post_test () {
+    git clean -d -x -f
+}
+
+
+# Normally no need to modify anything below this line
+
+bisect_good () {
+    echo "Test passed, bisect good."
+    echo
+    exit 0
+}
+
+bisect_bad () {
+    echo "Test failed: bisect bad."
+    echo
+    exit 1
+}
+
+bisect_skip () {
+    echo "Cannot test, bisect skipped."
+    echo
+    exit 125
+}
+
+bisect_abort () {
+    echo "Error occurred, bisect aborted."
+    echo
+    exit 128
+}
+
+set -x
+
+# Call the abort handler on any command error, even in shell functions / subshells
+trap bisect_abort ERR && set -E
+
+REPOS="$1"
+if [ "$REPOS" = "" ]; then
+    echo "Expected one argument: repos dir to run in"
+    bisect_abort
+elif [ ! -d "$REPOS" ]; then
+    echo "Repos dir does not exist: $REPOS"
+    bisect_abort
+fi
+
+cd "$REPOS"
+pre_test
+
+if run_test ; then
+    post_test
+    bisect_good
+else
+    post_test
+    bisect_bad
+fi

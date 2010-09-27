@@ -1,0 +1,139 @@
+#!/bin/bash
+
+# Report 'git status' for subdirectories which are git repositories and which have uncommitted changes.
+
+# Exit immediately on any command error, even in shell functions / subshells
+BASEDIR=$(dirname "$0")
+. "$BASEDIR/imports/exit-on-error" || exit 1
+
+show_ahead_behind=y
+show_ahead_commits=
+show_behind_commits=
+show_summary=
+show_unchanged_repositories=
+# -a ahead commits  (show local commits ready to push upstream)
+# -b behind commits (show remote commits ready to pull)
+# -l local          (don't show remote ahead/behind commit counts)
+# -q quiet          (minimal output)
+# -s summary        (show details of modified/staged/untracked files)
+# -u unchanged      (show even unchanged repositories)
+while getopts ":ablqsu" flag ; do
+    case "$flag" in
+        "a" ) show_ahead_commits="y" ;;
+        "b" ) show_behind_commits="y" ;;
+        "l" ) show_ahead_behind= ;;
+        "q" ) show_ahead_behind=y
+              show_ahead_commits=
+              show_behind_commits=
+              show_summary=
+              show_unchanged_repositories=
+              ;;
+        "s" ) show_summary="y" ;;
+        "u" ) show_unchanged_repositories="y" ;;
+        ":" ) exit_with_error "Missing argument to option '$OPTARG'" ;;
+        "?" | * ) exit_with_error "Unknown commandline option '$OPTARG'" ;;
+    esac
+done
+shift $((OPTIND - 1))
+if [ $# -gt 0 ]; then
+    exit_with_error "Unsupported additional commandline arguments: $*"
+fi
+
+matches() {
+    local text="$1"
+    local pattern="$2"
+
+    echo "$text" | grep -q "$pattern"
+}
+
+brightblue=$'\033[01;34m'
+brightred=$'\033[01;31m'
+brightyellow=$'\033[01;33m'
+brightgreen=$'\033[01;32m'
+brightmagenta=$'\033[01;35m'
+red=$'\033[31m'
+yellow=$'\033[33m'
+green=$'\033[32m'
+blue=$'\033[34m'
+magenta=$'\033[35m'
+brightblack=$'\033[01;30m'
+backgroundred=$'\033[07;31m'
+defaultcolor=$'\033[0m'
+
+rootdir="$PWD"
+
+find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d $'\0' gitdir ; do
+    full_repos_dir="$(readlink -enq "$rootdir/$gitdir/..")"
+    repos_dir="${full_repos_dir#$rootdir/}"
+    [ "$repos_dir" = "$rootdir" ] && repos_dir="." # Give sensible results when script was run in a top-level repos directory
+    cd "$full_repos_dir"
+
+    commit_count=""
+    if [ -n "$show_ahead_behind" ]; then
+        # Adapted from /etc/bash_completion.d/git-completion.bash : __git_ps1_show_upstream
+        # Get number of commits ahead of upstream branch, if there is one.
+        # '@{upstream}' is magic git revision syntax.
+        # --count --left-right '...' : commits on each side that are not in the merge base
+        count="$(git rev-list --count --left-right @{upstream}...HEAD 2>/dev/null)" \
+                || count=""
+        # Note the tab characters are required in case clauses and string substitutions:
+        # that's what 'git rev-list --count --left-right' returns
+        ahead=
+        behind=
+        case "$count" in
+        "") # no upstream
+                commit_count="" ;;
+        "0	0") # equal to upstream
+                commit_count="" ;;
+        "0	"*) # ahead of upstream
+                commit_count=" ${green}+${count#0	}${defaultcolor}"
+                ahead="y" ;;
+        *"	0") # behind upstream
+                commit_count=" ${magenta}-${count%	0}${defaultcolor}"
+                behind="y" ;;
+        *) # diverged from upstream
+                commit_count=" ${green}+${count#*	}${defaultcolor}${magenta}-${count%	*}${defaultcolor}"
+                ahead="y"
+                behind="y" ;;
+        esac
+        ahead_commit_list=""
+        behind_commit_list=""
+        if [ -n "$ahead" ] && [ -n "$show_ahead_commits" ]; then
+            # '..' : commits in HEAD but not in upstream
+            ahead_commit_list="
+${green}$(git log --reverse '--pretty=format:  + %s' @{upstream}..HEAD)${defaultcolor}"
+        fi
+        if [ -n "$behind" ] && [ -n "$show_behind_commits" ]; then
+            # '..' : commits in upstream but not in HEAD
+            behind_commit_list="
+${magenta}$(git log --reverse '--pretty=format:  - %s' HEAD..@{upstream})${defaultcolor}"
+        fi
+    fi
+
+    status="$(git status --porcelain)"
+    if [ -n "$show_unchanged_repositories" ] || [ -n "$status" ] || [ -n "$commit_count" ]; then
+        changes=""
+        if [ -n "$status" ]; then
+            # Get the categories of changes present.
+            # See 'man git-status' documentation for 'short' or 'porcelain' output
+            matches "$status" "^[MADRC][ MD]" \
+                    && changes="$changes ${brightblue}staged${defaultcolor}"
+            matches "$status" "^ [MD]" \
+                    && changes="$changes ${brightred}modified${defaultcolor}"
+            matches "$status" "^\(DD\|AU\|UD\|UA\|DU\|AA\|UU\)" \
+                    && changes="$changes ${brightmagenta}unmerged${defaultcolor}"
+            matches "$status" "^[?][?]" \
+                    && changes="$changes ${brightyellow}untracked${defaultcolor}"
+            [ -z "$changes" ] \
+                    && changes="${backgroundred}UNKNOWN${defaultcolor}"
+        fi
+        # Get the branch name or detached head commit id
+        ref="$(git symbolic-ref -q HEAD)" && branch="${ref#refs/heads/}" \
+                || branch="detached $(git rev-parse --short HEAD)"
+        # Header line
+        echo "$repos_dir ${brightblack}${branch}${defaultcolor}"${changes}"${commit_count}${ahead_commit_list}${behind_commit_list}"
+        # In verbose mode, show full summary of changes in each repository
+        [ -n "$show_summary" ] && [ -n "$status" ] && echo "$status" | colorlogs git-status-porcelain
+    fi
+    : # Null 'true' statement to prevent the while loop returning failure status if previous statement false
+done
