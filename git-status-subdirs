@@ -136,6 +136,8 @@ ${magenta}$(git log --reverse '--pretty=format:  - %s' HEAD..@{upstream})${defau
                     && changes="$changes ${brightyellow}untracked${defaultcolor}"
             [ -z "$changes" ] \
                     && changes="${backgroundred}UNKNOWN${defaultcolor}"
+            # Indent status output a little, easier to read
+            status="$(echo "$status" | sed 's/.*/  \0/')"
         fi
         # Get the branch name or detached head commit id
         ref="$(git symbolic-ref -q HEAD)" && branch="${ref#refs/heads/}" \
