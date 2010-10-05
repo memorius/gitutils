@@ -17,12 +17,13 @@ show_unchanged_repositories=
 # -q quiet          (minimal output)
 # -s summary        (show details of modified/staged/untracked files)
 # -u unchanged      (show even unchanged repositories)
-while getopts ":ablqsu" flag ; do
+# -v verbose        (enable all optional items, except unchanged repositories)
+while getopts ":ablqsuv" flag ; do
     case "$flag" in
         "a" ) show_ahead_commits="y" ;;
         "b" ) show_behind_commits="y" ;;
         "l" ) show_ahead_behind= ;;
-        "q" ) show_ahead_behind=y
+        "q" ) show_ahead_behind="y"
               show_ahead_commits=
               show_behind_commits=
               show_summary=
@@ -30,6 +31,11 @@ while getopts ":ablqsu" flag ; do
               ;;
         "s" ) show_summary="y" ;;
         "u" ) show_unchanged_repositories="y" ;;
+        "v" ) show_ahead_behind="y"
+              show_ahead_commits="y"
+              show_behind_commits="y"
+              show_summary="y"
+              ;;
         ":" ) exit_with_error "Missing argument to option '$OPTARG'" ;;
         "?" | * ) exit_with_error "Unknown commandline option '$OPTARG'" ;;
     esac
@@ -111,7 +117,11 @@ ${magenta}$(git log --reverse '--pretty=format:  - %s' HEAD..@{upstream})${defau
     fi
 
     status="$(git status --porcelain)"
-    if [ -n "$show_unchanged_repositories" ] || [ -n "$status" ] || [ -n "$commit_count" ]; then
+    if [ -n "$status" ] \
+            || [ -n "$show_unchanged_repositories" ] \
+            || [ -n "$ahead_commit_list" ] \
+            || [ -n "$behind_commit_list" ] \
+            || { [ -n "$show_ahead_behind" ] && [ -z "$show_ahead_commits" ] && [ -z "$show_behind_commits" ] && [ -n "$commit_count" ] ; }; then
         changes=""
         if [ -n "$status" ]; then
             # Get the categories of changes present.
