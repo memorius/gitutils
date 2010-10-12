@@ -32,27 +32,32 @@ else
 fi
 [ $# -ge 1 ] || usage
 
+# Don't rename these variables, they are meant to be available for use in the target command (under eval)
+declare -x FULL_REPOS_DIR
+declare -x RELATIVE_REPOS_DIR
+
 rootdir="$PWD"
 if [ -n "$all" ]; then
     find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d $'\0' gitdir ; do
-        full_repos_dir="$(readlink -enq "$rootdir/$gitdir/..")"
-        repos_dir="${full_repos_dir#$rootdir/}"
-        cd "$full_repos_dir"
-        echo "$repos_dir:"
-        $@
+        FULL_REPOS_DIR="$(readlink -enq "$rootdir/$gitdir/..")"
+        RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
+        cd "$FULL_REPOS_DIR"
+        echo "$RELATIVE_REPOS_DIR:"
+        ( eval "$@" )
         echo
         :
     done
 else
     for (( i=0 ; i < ${#repositories[@]} ; i++ )); do
         cd "$rootdir" # since it may be a relative path
-        full_repos_dir="$(readlink -mnq "${repositories[$i]}")"
-        repos_dir="${full_repos_dir#$rootdir/}"
-        [ -d "$full_repos_dir" ] || exit_with_error "No such directory: '$full_repos_dir'" 3
-        cd "$full_repos_dir"
-        echo "$repos_dir:"
-        [ -d ".git" ] || exit_with_error "Not a git repository: '$full_repos_dir/.git' not found" 4
-        $@
+        # Don't rename these variables, they are meant to be available for use in the target command
+        FULL_REPOS_DIR="$(readlink -mnq "${repositories[$i]}")"
+        RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
+        [ -d "$FULL_REPOS_DIR" ] || exit_with_error "No such directory: '$FULL_REPOS_DIR'" 3
+        cd "$FULL_REPOS_DIR"
+        echo "$RELATIVE_REPOS_DIR:"
+        [ -d ".git" ] || exit_with_error "Not a git repository: '$FULL_REPOS_DIR/.git' not found" 4
+        ( eval "$@" )
         echo
         :
     done
