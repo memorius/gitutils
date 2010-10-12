@@ -5,31 +5,48 @@
 . "/data/bin/imports/exit-on-error" || exit 1
 
 usage() {
-    exit_with_error "Usage: '$0 [--all | <repository> ... --] <command> ...'" 2
+    exit_with_error "Usage: '$0 [-q] [-a | <repository> ...] -- <command> ...'" 2
 }
 
-[ $# -ge 2 ] || usage
+[ $# -ge 3 ] || usage
 
-declare -a repositories
 all=
-if [ "$1" = "--all" ]; then
-    all="y"
+quiet=
+# Note getopt consumes '--' (if it's present) and returns false, leaving OPTIND pointing at the option after '--'
+while getopts ":aq" flag ; do
+    case "$flag" in
+        "a" ) all="y" ;;
+        "q" ) quiet="y" ;;
+        ":" ) exit_with_error "Missing argument to option '$OPTARG'" ;;
+        *   ) exit_with_error "Unhandled option '$OPTARG'" ;;
+    esac
+done
+# Consume the options processed by getopt, except the last one, which we need so we can find the '--' delimiting the repos list.
+# If getopt stopped without finding '--', we detect this later.
+while [ $OPTIND -gt 1 ] && [ "$1" != "--" ] ; do
     shift
-    if [ "$1" = "--" ]; then
-        shift
-    fi
-else
+    (( OPTIND-- ))
+done
+
+# If not in 'all' mode, everything else up until '--' forms the list of repositories
+declare -a repositories
+if [ -z "$all" ]; then
     i=0
     while [ $# -gt 0 ] && [ "$1" != "--" ]; do
         repositories[(( i++ ))]="$1"
         shift
     done
-    if [ "$1" = "--" ]; then
-        shift
-    else
-        usage
-    fi
+    [ $i -eq 0 ] && usage
 fi
+
+# Dashes separate command from args / repos list, always required
+if [ "$1" = "--" ]; then
+    shift
+else
+    usage
+fi
+
+# The rest is the command to run in each repos - must be at least one word.
 [ $# -ge 1 ] || usage
 
 # Don't rename these variables, they are meant to be available for use in the target command (under eval)
@@ -42,9 +59,9 @@ if [ -n "$all" ]; then
         FULL_REPOS_DIR="$(readlink -enq "$rootdir/$gitdir/..")"
         RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
         cd "$FULL_REPOS_DIR"
-        echo "$RELATIVE_REPOS_DIR:"
+        [ -n "$quiet" ] || echo "$RELATIVE_REPOS_DIR:"
         ( eval "$@" )
-        echo
+        [ -n "$quiet" ] || echo
         :
     done
 else
@@ -55,10 +72,10 @@ else
         RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
         [ -d "$FULL_REPOS_DIR" ] || exit_with_error "No such directory: '$FULL_REPOS_DIR'" 3
         cd "$FULL_REPOS_DIR"
-        echo "$RELATIVE_REPOS_DIR:"
+        [ -n "$quiet" ] || echo "$RELATIVE_REPOS_DIR:"
         [ -d ".git" ] || exit_with_error "Not a git repository: '$FULL_REPOS_DIR/.git' not found" 4
         ( eval "$@" )
-        echo
+        [ -n "$quiet" ] || echo
         :
     done
 fi
