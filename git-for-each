@@ -5,18 +5,20 @@
 . "/data/bin/imports/exit-on-error" || exit 1
 
 usage() {
-    exit_with_error "Usage: '$0 [-q] [-a | <repository> ...] -- <command> ...'" 2
+    exit_with_error "Usage: '$0 [-d] [-q] [-a | <repository> ...] -- <command> ...'" 2
 }
 
 [ $# -ge 3 ] || usage
 
 all=
 quiet=
+debug=
 # Note getopt consumes '--' (if it's present) and returns false, leaving OPTIND pointing at the option after '--'
-while getopts ":aq" flag ; do
+while getopts ":aqd" flag ; do
     case "$flag" in
         "a" ) all="y" ;;
         "q" ) quiet="y" ;;
+        "d" ) debug="y" ;;
         ":" ) exit_with_error "Missing argument to option '$OPTARG'" ;;
         *   ) exit_with_error "Unhandled option '$OPTARG'" ;;
     esac
@@ -28,11 +30,16 @@ while [ $OPTIND -gt 1 ] && [ "$1" != "--" ] ; do
     (( OPTIND-- ))
 done
 
+[ -n "$debug" ] && echo "Debug mode, not executing commands"
+
 # If not in 'all' mode, everything else up until '--' forms the list of repositories
 declare -a repositories
-if [ -z "$all" ]; then
+if [ -n "$all" ]; then
+    [ -n "$debug" ] && echo "Repos: (all)"
+else
     i=0
     while [ $# -gt 0 ] && [ "$1" != "--" ]; do
+        [ -n "$debug" ] && echo "Repos: $1"
         repositories[(( i++ ))]="$1"
         shift
     done
@@ -48,6 +55,12 @@ fi
 
 # The rest is the command to run in each repos - must be at least one word.
 [ $# -ge 1 ] || usage
+
+if [ -n "$debug" ]; then
+    echo "Command:
+$@"
+    exit 0
+fi
 
 # Don't rename these variables, they are meant to be available for use in the target command (under eval)
 declare -x FULL_REPOS_DIR
