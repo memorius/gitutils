@@ -1,0 +1,23 @@
+#!/bin/bash
+
+. "/data/bin/imports/exit-on-error" || exit 1
+
+export force_clean="-n"
+while getopts ":f" flag ; do
+    case "$flag" in
+        "f" ) force_clean="-f" ;;
+        ":" ) exit_with_error "Missing argument to option '$OPTARG'" ;;
+        *   ) exit_with_error "Unhandled option '$OPTARG'" ;;
+    esac
+done
+
+do_clean() {
+    local to_clean="$( git clean -d -X -n | cut -d" " -f3- | { grep -vE "(\\.classpath|\\.project|\\.settings/)\$" || true ; } )"
+    [ -z "$to_clean" ] && return
+    echo "$RELATIVE_REPOS_DIR:"
+    echo "$to_clean" | xargs --delimiter='\n' git clean -d -X $force_clean
+    echo
+}
+export -f do_clean
+
+git-for-each -a -q -- do_clean
