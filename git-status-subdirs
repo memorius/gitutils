@@ -98,21 +98,28 @@ find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d 
                 commit_count=" ${magenta}-${count%	0}${defaultcolor}"
                 behind="y" ;;
         *) # diverged from upstream
-                commit_count=" ${green}+${count#*	}${defaultcolor}${magenta}-${count%	*}${defaultcolor}"
+                commit_count=" ${magenta}-${count%	*}${defaultcolor}${green}+${count#*	}${defaultcolor}"
                 ahead="y"
                 behind="y" ;;
         esac
         ahead_commit_list=""
         behind_commit_list=""
         if [ -n "$ahead" ] && [ -n "$show_ahead_commits" ]; then
+            # Ahead commits, oldest first, numbered from oldest (+1) to newest (+n)  by outputting and numbering in oldest-first order.
             # '..' : commits in HEAD but not in upstream
+            # cat: number lines
+            # sed: strip extra leading spaces from cat output, add minus sign and replace tab with space, preserving the varying leading indentation.
             ahead_commit_list="
-${green}$(git log --reverse '--pretty=format:  + %s' @{upstream}..HEAD)${defaultcolor}"
+${green}$(git log --reverse '--pretty=format:%s' @{upstream}..HEAD | cat -n - | sed -r 's/   ( *)([0-9]+)\t(.*)/\1+\2  \3/')${defaultcolor}"
         fi
         if [ -n "$behind" ] && [ -n "$show_behind_commits" ]; then
+            # Behind commits, oldest first, numbered from oldest (-n) to newest (-1) by outputting and numbering in newest-first order then reversing.
             # '..' : commits in upstream but not in HEAD
+            # cat: number lines
+            # sed 1: strip extra leading spaces from cat output, add minus sign and replace tab with space, preserving the varying leading indentation.
+            # sed 2: reverse lines. (tac doesn't work properly here for some reason, screws up last line.)
             behind_commit_list="
-${magenta}$(git log --reverse '--pretty=format:  - %s' HEAD..@{upstream})${defaultcolor}"
+${magenta}$(git log '--pretty=format:%s' HEAD..@{upstream} | cat -n - | sed -r 's/   ( *)([0-9]+)\t(.*)/\1-\2  \3/' | sed '1!G;h;$!d')${defaultcolor}"
         fi
     fi
 
@@ -143,7 +150,7 @@ ${magenta}$(git log --reverse '--pretty=format:  - %s' HEAD..@{upstream})${defau
         ref="$(git symbolic-ref -q HEAD)" && branch="${ref#refs/heads/}" \
                 || branch="detached $(git rev-parse --short HEAD)"
         # Header line
-        echo "$repos_dir ${brightblack}${branch}${defaultcolor}"${changes}"${commit_count}${ahead_commit_list}${behind_commit_list}"
+        echo "$repos_dir ${brightblack}${branch}${defaultcolor}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
         # In verbose mode, show full summary of changes in each repository
         [ -n "$show_summary" ] && [ -n "$status" ] && echo "$status" | colorlogs git-status-porcelain
     fi
