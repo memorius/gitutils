@@ -87,20 +87,20 @@ find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d 
         ahead=
         behind=
         case "$count" in
-        "") # no upstream
-                commit_count="" ;;
-        "0	0") # equal to upstream
-                commit_count="" ;;
-        "0	"*) # ahead of upstream
-                commit_count=" ${green}+${count#0	}${defaultcolor}"
-                ahead="y" ;;
-        *"	0") # behind upstream
-                commit_count=" ${magenta}-${count%	0}${defaultcolor}"
-                behind="y" ;;
-        *) # diverged from upstream
-                commit_count=" ${magenta}-${count%	*}${defaultcolor}${green}+${count#*	}${defaultcolor}"
-                ahead="y"
-                behind="y" ;;
+            "") # no upstream
+                    commit_count="" ;;
+            "0	0") # equal to upstream
+                    commit_count="" ;;
+            "0	"*) # ahead of upstream
+                    commit_count=" ${green}+${count#0	}${defaultcolor}"
+                    ahead="y" ;;
+            *"	0") # behind upstream
+                    commit_count=" ${magenta}-${count%	0}${defaultcolor}"
+                    behind="y" ;;
+            *) # diverged from upstream
+                    commit_count=" ${magenta}-${count%	*}${defaultcolor}${green}+${count#*	}${defaultcolor}"
+                    ahead="y"
+                    behind="y" ;;
         esac
         ahead_commit_list=""
         behind_commit_list=""
