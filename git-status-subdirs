@@ -147,10 +147,10 @@ ${magenta}$(git log '--pretty=format:%s' HEAD..@{upstream} | cat -n - | sed -r '
             status="$(echo "$status" | sed 's/.*/  \0/')"
         fi
         # Get the branch name or detached head commit id
-        ref="$(git symbolic-ref -q HEAD)" && branch="${ref#refs/heads/}" \
-                || branch="detached $(git rev-parse --short HEAD)"
+        ref="$(git symbolic-ref -q HEAD)" && branch="${brightblack}${ref#refs/heads/}${defaultcolor}" \
+                || branch="${backgroundred}detached $(git rev-parse --short HEAD)${defaultcolor}"
         # Header line
-        echo "$repos_dir ${brightblack}${branch}${defaultcolor}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
+        echo "$repos_dir ${branch}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
         # In verbose mode, show full summary of changes in each repository
         [ -n "$show_summary" ] && [ -n "$status" ] && echo "$status" | colorlogs git-status-porcelain
     fi
