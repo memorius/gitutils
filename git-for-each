@@ -4,11 +4,16 @@
 
 . "/data/bin/imports/exit-on-error" || exit 1
 
-usage() {
-    exit_with_error "Usage: '$0 [-d] [-q] [-a | <repository> ...] -- <command> ...'" 2
+usage_print() {
+    print_error "Usage: '$0 [-d (debug)] [-q (quiet)] [-a (all) | <repository> ...] -- <command> ...'"
 }
 
-[ $# -ge 3 ] || usage
+usage_exit() {
+    usage_print
+    exit 2
+}
+
+[ $# -ge 3 ] || usage_exit
 
 all=
 quiet=
@@ -19,7 +24,8 @@ while getopts ":aqd" flag ; do
         "a" ) all="y" ;;
         "q" ) quiet="y" ;;
         "d" ) debug="y" ;;
-        ":" ) exit_with_error "Missing argument to option '$OPTARG'" ;;
+        ":" ) print_error "Missing argument to option '$OPTARG'" ; usage_exit ;;
+        "?" ) print_error "Unknown commandline option '$OPTARG'" ; usage_exit ;;
         *   ) exit_with_error "Unhandled option '$OPTARG'" ;;
     esac
 done
@@ -43,18 +49,18 @@ else
         repositories[(( i++ ))]="$1"
         shift
     done
-    [ $i -eq 0 ] && usage
+    [ $i -eq 0 ] && usage_exit
 fi
 
 # Dashes separate command from args / repos list, always required
 if [ "$1" = "--" ]; then
     shift
 else
-    usage
+    usage_exit
 fi
 
 # The rest is the command to run in each repos - must be at least one word.
-[ $# -ge 1 ] || usage
+[ $# -ge 1 ] || usage_exit
 
 if [ -n "$debug" ]; then
     echo "Command:
@@ -83,10 +89,10 @@ else
         # Don't rename these variables, they are meant to be available for use in the target command
         FULL_REPOS_DIR="$(readlink -mnq "${repositories[$i]}")"
         RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
-        [ -d "$FULL_REPOS_DIR" ] || exit_with_error "No such directory: '$FULL_REPOS_DIR'" 3
+        [ -d "$FULL_REPOS_DIR" ] || { print_error "No such directory: '$FULL_REPOS_DIR'" ; usage_exit ; }
         cd "$FULL_REPOS_DIR"
+        [ -d ".git" ] || { print_error "Not a git repository: '$FULL_REPOS_DIR/.git' not found" ; usage_exit ; }
         [ -n "$quiet" ] || echo "$RELATIVE_REPOS_DIR:"
-        [ -d ".git" ] || exit_with_error "Not a git repository: '$FULL_REPOS_DIR/.git' not found" 4
         ( eval "$@" )
         [ -n "$quiet" ] || echo
         :

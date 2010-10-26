@@ -6,6 +6,15 @@
 BASEDIR=$(dirname "$0")
 . "$BASEDIR/imports/exit-on-error" || exit 1
 
+usage_print() {
+    print_error "Usage: '$0 [-a (ahead)] [-b (behind)] [-l (local)] [-s (file summary)] [-q (quiet)] | [-u (show even unchanged)] [-v (verbose)]'"
+}
+
+usage_exit() {
+    usage_print
+    exit 2
+}
+
 show_ahead_behind=y
 show_ahead_commits=
 show_behind_commits=
@@ -36,13 +45,15 @@ while getopts ":ablqsuv" flag ; do
               show_behind_commits="y"
               show_summary="y"
               ;;
-        ":" ) exit_with_error "Missing argument to option '$OPTARG'" ;;
-        "?" | * ) exit_with_error "Unknown commandline option '$OPTARG'" ;;
+        ":" ) print_error "Missing argument to option '$OPTARG'" ; usage_exit ;;
+        "?" ) print_error "Unknown commandline option '$OPTARG'" ; usage_exit ;;
+        *   ) exit_with_error "Unhandled option '$OPTARG'" ;;
     esac
 done
 shift $((OPTIND - 1))
 if [ $# -gt 0 ]; then
-    exit_with_error "Unsupported additional commandline arguments: $*"
+    print_error "Unsupported additional commandline arguments: $*"
+    usage_exit
 fi
 
 matches() {
