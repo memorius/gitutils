@@ -2,7 +2,8 @@
 
 # Run command on each listed git repository, or on all repositories beneath the current directori
 
-. "/data/bin/imports/exit-on-error" || exit 1
+BASEDIR=$(dirname "$0")
+. "$BASEDIR/imports/exit-on-error" || exit 1
 
 usage_print() {
     print_error "Usage: '$0 [-d (debug)] [-q (quiet)] [-a (all) | <repository> ...] -- <command> ...'"

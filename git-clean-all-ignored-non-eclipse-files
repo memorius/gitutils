@@ -1,6 +1,7 @@
 #!/bin/bash
 
-. "/data/bin/imports/exit-on-error" || exit 1
+BASEDIR=$(dirname "$0")
+. "$BASEDIR/imports/exit-on-error" || exit 1
 
 export force_clean="-n"
 while getopts ":f" flag ; do
