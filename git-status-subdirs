@@ -3,16 +3,10 @@
 # Report 'git status' for subdirectories which are git repositories and which have uncommitted changes.
 
 # Exit immediately on any command error, even in shell functions / subshells
-BASEDIR=$(dirname "$0")
-. "$BASEDIR/imports/exit-on-error" || exit 1
+. "$(dirname "$0")/imports/exit-on-error" || exit 1
 
 usage_print() {
     print_error "Usage: '$0 [-a (ahead)] [-b (behind)] [-l (local)] [-s (file summary)] [-q (quiet)] | [-u (show even unchanged)] [-v (verbose)]'"
-}
-
-usage_exit() {
-    usage_print
-    exit 2
 }
 
 show_ahead_behind=y
@@ -45,15 +39,14 @@ while getopts ":ablqsuv" flag ; do
               show_behind_commits="y"
               show_summary="y"
               ;;
-        ":" ) print_error "Missing argument to option '$OPTARG'" ; usage_exit ;;
-        "?" ) print_error "Unknown commandline option '$OPTARG'" ; usage_exit ;;
+        ":" ) usage_error_exit "Missing argument to option '$OPTARG'" ;;
+        "?" ) usage_error_exit "Unknown commandline option '$OPTARG'" ;;
         *   ) exit_with_error "Unhandled option '$OPTARG'" ;;
     esac
 done
 shift $((OPTIND - 1))
 if [ $# -gt 0 ]; then
-    print_error "Unsupported additional commandline arguments: $*"
-    usage_exit
+    usage_error_exit "Unsupported additional commandline arguments: $*"
 fi
 
 matches() {

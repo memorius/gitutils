@@ -2,19 +2,13 @@
 
 # Run command on each listed git repository, or on all repositories beneath the current directori
 
-BASEDIR=$(dirname "$0")
-. "$BASEDIR/imports/exit-on-error" || exit 1
+. "$(dirname "$0")/imports/exit-on-error" || exit 1
 
 usage_print() {
     print_error "Usage: '$0 [-d (debug)] [-q (quiet)] [-a (all) | <repository> ...] -- <command> ...'"
 }
 
-usage_exit() {
-    usage_print
-    exit 2
-}
-
-[ $# -ge 3 ] || usage_exit
+[ $# -ge 3 ] || usage_error_exit "Not enough arguments"
 
 all=
 quiet=
@@ -25,8 +19,8 @@ while getopts ":aqd" flag ; do
         "a" ) all="y" ;;
         "q" ) quiet="y" ;;
         "d" ) debug="y" ;;
-        ":" ) print_error "Missing argument to option '$OPTARG'" ; usage_exit ;;
-        "?" ) print_error "Unknown commandline option '$OPTARG'" ; usage_exit ;;
+        ":" ) usage_error_exit "Missing argument to option '$OPTARG'" ;;
+        "?" ) usage_error_exit "Unknown commandline option '$OPTARG'" ;;
         *   ) exit_with_error "Unhandled option '$OPTARG'" ;;
     esac
 done
@@ -50,18 +44,18 @@ else
         repositories[(( i++ ))]="$1"
         shift
     done
-    [ $i -eq 0 ] && usage_exit
+    [ $i -eq 0 ] && usage_error_exit "At least one repository must be specified"
 fi
 
 # Dashes separate command from args / repos list, always required
 if [ "$1" = "--" ]; then
     shift
 else
-    usage_exit
+    usage_error_exit "Missing '--'"
 fi
 
 # The rest is the command to run in each repos - must be at least one word.
-[ $# -ge 1 ] || usage_exit
+[ $# -ge 1 ] || usage_error_exit "No command specified"
 
 if [ -n "$debug" ]; then
     echo "Command:
@@ -90,9 +84,9 @@ else
         # Don't rename these variables, they are meant to be available for use in the target command
         FULL_REPOS_DIR="$(readlink -mnq "${repositories[$i]}")"
         RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
-        [ -d "$FULL_REPOS_DIR" ] || { print_error "No such directory: '$FULL_REPOS_DIR'" ; usage_exit ; }
+        [ -d "$FULL_REPOS_DIR" ] || usage_error_exit "No such directory: '$FULL_REPOS_DIR'"
         cd "$FULL_REPOS_DIR"
-        [ -d ".git" ] || { print_error "Not a git repository: '$FULL_REPOS_DIR/.git' not found" ; usage_exit ; }
+        [ -d ".git" ] || usage_error_exit "Not a git repository: '$FULL_REPOS_DIR/.git' not found"
         [ -n "$quiet" ] || echo "$RELATIVE_REPOS_DIR:"
         ( eval "$@" )
         [ -n "$quiet" ] || echo

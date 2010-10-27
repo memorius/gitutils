@@ -1,37 +1,6 @@
 #!/bin/bash
 
-EXIT_ON_ERROR_EXITING=
-show_err () {
-    err=$?
-
-    if [ -n "$EXIT_ON_ERROR_EXITING" ]; then
-        return
-    fi
-    EXIT_ON_ERROR_EXITING="y"
-    echo 1>&2 "$0: Error $err occurred, aborting."
-}
-
-print_error () {
-    local MESSAGE="$1"
-
-    echo 1>&2 "$0: $MESSAGE"
-}
-
-exit_with_error () {
-    if [ -n "$EXIT_ON_ERROR_EXITING" ]; then
-        return
-    fi
-    EXIT_ON_ERROR_EXITING="y"
-
-    local MESSAGE="$1"
-    local EXIT_CODE=$2
-
-    print_error "$MESSAGE"
-    if [ -z "$EXIT_CODE" ]; then
-        EXIT_CODE=1
-    fi
-    exit $EXIT_CODE
-}
+. "$(dirname "$0")/imports/error-funcs" || exit 1
 
 # Exit immediately on any command error, even in shell functions / subshells
 # FIXME: with 'set -E', some things cause show_err to be triggered twice with different failure codes. Can't seem to avoid it.
