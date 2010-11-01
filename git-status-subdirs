@@ -152,7 +152,7 @@ ${magenta}$(git log '--pretty=format:%s' HEAD..@{upstream} | cat -n - | sed -r '
         fi
         # Get the branch name or detached head commit id
         ref="$(git symbolic-ref -q HEAD)" && branch="${brightblack}${ref#refs/heads/}${defaultcolor}" \
-                || branch="${backgroundred}detached $(git rev-parse --short HEAD)${defaultcolor}"
+                || branch="${backgroundred}detached $(git describe --exact-match HEAD 2>/dev/null || git rev-parse --short HEAD)${defaultcolor}"
         # Header line
         echo "$repos_dir ${branch}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
         # In verbose mode, show full summary of changes in each repository
