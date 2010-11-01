@@ -7,18 +7,20 @@
 usage_print() {
     print_error "Usage:
    '$0 [-d (debug)] [-q (quiet)] <repository> ... -- <command> ...'
-or '$0 [-d (debug)] [-q (quiet)] -a (all) -- <command> ...'"
+or '$0 [-d (debug)] [-q (quiet)] -a (all) [-b (only if on a branch)] -- <command> ...'"
 }
 
 [ $# -ge 3 ] || usage_error_exit "Not enough arguments"
 
 all=
+only_if_on_branch=
 quiet=
 debug=
 # Note getopt consumes '--' (if it's present) and returns false, leaving OPTIND pointing at the option after '--'
-while getopts ":aqd" flag ; do
+while getopts ":abqd" flag ; do
     case "$flag" in
         "a" ) all="y" ;;
+        "b" ) only_if_on_branch="y" ;;
         "q" ) quiet="y" ;;
         "d" ) debug="y" ;;
         ":" ) usage_error_exit "Missing argument to option '$OPTARG'" ;;
@@ -69,15 +71,28 @@ fi
 declare -x FULL_REPOS_DIR
 declare -x RELATIVE_REPOS_DIR
 
+run_command_in_dir() {
+    [ -d "$FULL_REPOS_DIR" ] || usage_error_exit "No such directory: '$FULL_REPOS_DIR'"
+    cd "$FULL_REPOS_DIR"
+    [ -d ".git" ] || usage_error_exit "Not a git repository: '$FULL_REPOS_DIR/.git' not found"
+
+    RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
+    [ -n "$quiet" ] || echo "$RELATIVE_REPOS_DIR:"
+
+    if [ -n "$only_if_on_branch" ] && ! git symbolic-ref -q HEAD >/dev/null ; then
+        echo "--- Skipping (not on a branch) ---"
+    else
+        ( eval "$@" )
+    fi
+
+    [ -n "$quiet" ] || echo
+}
+
 rootdir="$PWD"
 if [ -n "$all" ]; then
     find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d $'\0' gitdir ; do
         FULL_REPOS_DIR="$(readlink -enq "$rootdir/$gitdir/..")"
-        RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
-        cd "$FULL_REPOS_DIR"
-        [ -n "$quiet" ] || echo "$RELATIVE_REPOS_DIR:"
-        ( eval "$@" )
-        [ -n "$quiet" ] || echo
+        run_command_in_dir "$@"
         :
     done
 else
@@ -85,13 +100,7 @@ else
         cd "$rootdir" # since it may be a relative path
         # Don't rename these variables, they are meant to be available for use in the target command
         FULL_REPOS_DIR="$(readlink -mnq "${repositories[$i]}")"
-        RELATIVE_REPOS_DIR="${FULL_REPOS_DIR#$rootdir/}"
-        [ -d "$FULL_REPOS_DIR" ] || usage_error_exit "No such directory: '$FULL_REPOS_DIR'"
-        cd "$FULL_REPOS_DIR"
-        [ -d ".git" ] || usage_error_exit "Not a git repository: '$FULL_REPOS_DIR/.git' not found"
-        [ -n "$quiet" ] || echo "$RELATIVE_REPOS_DIR:"
-        ( eval "$@" )
-        [ -n "$quiet" ] || echo
+        run_command_in_dir "$@"
         :
     done
 fi
