@@ -5,7 +5,9 @@
 . "$(dirname "$0")/imports/exit-on-error" || exit 1
 
 usage_print() {
-    print_error "Usage: '$0 [-d (debug)] [-q (quiet)] [-a (all) | <repository> ...] -- <command> ...'"
+    print_error "Usage:
+   '$0 [-d (debug)] [-q (quiet)] <repository> ... -- <command> ...'
+or '$0 [-d (debug)] [-q (quiet)] -a (all) -- <command> ...'"
 }
 
 [ $# -ge 3 ] || usage_error_exit "Not enough arguments"
