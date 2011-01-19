@@ -6,38 +6,52 @@
 . "$(dirname "$0")/imports/exit-on-error" || exit 1
 
 usage_print() {
-    print_error "Usage: '$0 [-a (ahead)] [-b (behind)] [-l (local)] [-s (file summary)] [-q (quiet)] | [-u (show even unchanged)] [-v (verbose)]'"
+    print_error "Usage: '$0 [-a (ahead)] [-b (behind)] [-B (list all branches)] [-l (local)] [-r (remote)] [-s (file summary)] [-q (quiet)] | [-u (show even unchanged)] [-v (verbose)]'"
 }
 
+list_all_branches=
+show_if_ahead=
+show_if_behind=
+show_if_either_ahead_or_behind=y
 show_ahead_behind=y
 show_ahead_commits=
 show_behind_commits=
+show_local_changes=y
 show_summary=
 show_unchanged_repositories=
 # -a ahead commits  (show local commits ready to push upstream)
 # -b behind commits (show remote commits ready to pull)
+# -B branches       (list all branches)
 # -l local          (don't show remote ahead/behind commit counts)
-# -q quiet          (minimal output)
+# -q quiet          (disable most verbose output items)
+# -r remote         (show only remote ahead/behind commit info, don't show local changes)
 # -s summary        (show details of modified/staged/untracked files)
 # -u unchanged      (show even unchanged repositories)
 # -v verbose        (enable all optional items, except unchanged repositories)
-while getopts ":ablqsuv" flag ; do
+while getopts ":abBlqrsuv" flag ; do
     case "$flag" in
-        "a" ) show_ahead_commits="y" ;;
-        "b" ) show_behind_commits="y" ;;
+        "a" ) show_if_either_ahead_or_behind=
+              show_if_ahead="y"
+              show_ahead_commits="y" ;;
+        "b" ) show_if_either_ahead_or_behind=
+              show_if_behind="y"
+              show_behind_commits="y" ;;
+        "B" ) list_all_branches="y" ;;
         "l" ) show_ahead_behind= ;;
-        "q" ) show_ahead_behind="y"
-              show_ahead_commits=
+        "q" ) show_ahead_commits=
               show_behind_commits=
               show_summary=
               show_unchanged_repositories=
+              list_all_branches=
               ;;
+        "r" ) show_local_changes= ;;
         "s" ) show_summary="y" ;;
         "u" ) show_unchanged_repositories="y" ;;
         "v" ) show_ahead_behind="y"
               show_ahead_commits="y"
               show_behind_commits="y"
               show_summary="y"
+              list_all_branches="y"
               ;;
         ":" ) usage_error_exit "Missing argument to option '$OPTARG'" ;;
         "?" ) usage_error_exit "Unknown commandline option '$OPTARG'" ;;
@@ -56,6 +70,18 @@ matches() {
     echo "$text" | grep -q "$pattern"
 }
 
+print_all_branch_names_except_current() {
+    first="y"
+    for branch in $(git branch | grep -v '^*' | cut -c 3-) ; do
+        if [ -n "$first" ]; then
+            first=
+            echo -n "$branch"
+        else
+            echo -n ", $branch"
+        fi
+    done
+}
+
 brightblue=$'\033[01;34m'
 brightred=$'\033[01;31m'
 brightyellow=$'\033[01;33m'
@@ -65,6 +91,7 @@ red=$'\033[31m'
 yellow=$'\033[33m'
 green=$'\033[32m'
 blue=$'\033[34m'
+cyan=$'\033[36m'
 magenta=$'\033[35m'
 brightblack=$'\033[01;30m'
 backgroundred=$'\033[07;31m'
@@ -128,11 +155,16 @@ ${magenta}$(git log '--pretty=format:%s' HEAD..@{upstream} | cat -n - | sed -r '
     fi
 
     status="$(git status --porcelain)"
-    if [ -n "$status" ] \
+    # set -x
+    if { [ -n "$show_local_changes" ] && [ -n "$status" ] ; } \
             || [ -n "$show_unchanged_repositories" ] \
             || [ -n "$ahead_commit_list" ] \
             || [ -n "$behind_commit_list" ] \
-            || { [ -n "$show_ahead_behind" ] && [ -z "$show_ahead_commits" ] && [ -z "$show_behind_commits" ] && [ -n "$commit_count" ] ; }; then
+            || { [ -n "$show_ahead_behind" ] && \
+                {  { [ -n "$show_if_either_ahead_or_behind" ] && [ -n "$commit_count" ] ; } \
+                || { [ -n "$show_if_ahead"  ] && [ -n "$ahead"  ] ; } \
+                || { [ -n "$show_if_behind" ] && [ -n "$behind" ] ; } ; } ; }; then
+        # set +x
         changes=""
         if [ -n "$status" ]; then
             # Get the categories of changes present.
@@ -150,11 +182,16 @@ ${magenta}$(git log '--pretty=format:%s' HEAD..@{upstream} | cat -n - | sed -r '
             # Indent status output a little, easier to read
             status="$(echo "$status" | sed 's/.*/  \0/')"
         fi
+        all_other_branches=""
+        if [ -n "$list_all_branches" ]; then
+            all_other_branches="$(print_all_branch_names_except_current)"
+            [ -n "$all_other_branches" ] && all_other_branches=" ${brightblack}($all_other_branches)${defaultcolor}"
+        fi
         # Get the branch name or detached head commit id
         ref="$(git symbolic-ref -q HEAD)" && branch="${brightblack}${ref#refs/heads/}${defaultcolor}" \
                 || branch="${backgroundred}detached $(git describe --exact-match HEAD 2>/dev/null || git rev-parse --short HEAD)${defaultcolor}"
         # Header line
-        echo "$repos_dir ${branch}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
+        echo "$repos_dir ${branch}${all_other_branches}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
         # In verbose mode, show full summary of changes in each repository
         [ -n "$show_summary" ] && [ -n "$status" ] && echo "$status" | colorlogs git-status-porcelain
     fi

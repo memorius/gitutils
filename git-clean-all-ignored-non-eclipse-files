@@ -20,13 +20,15 @@ if [ $# -gt 0 ]; then
     usage_error_exit "Unsupported additional commandline arguments: $*"
 fi
 
+# set -x
+
 do_clean() {
     # Sed command has to strip trailing slash from directories,
     # because for some reason the xargs 'git clean' command below ignores them if they have a trailing slash
     local to_clean="$( git clean -d -X -n \
             | sed -r 's/^Would remove (.*)$/\1/' \
             | { grep -vE "(\\.classpath|\\.project|\\.settings/)\$" | sed -r 's_^(.*[^/])/?$_\1_' || true ; } )"
-    [ -z "$to_clean" ] && return
+    [ -z "$to_clean" ] && return 0
     echo "$RELATIVE_REPOS_DIR:"
     echo "$to_clean" | xargs --delimiter='\n' git clean -d -X $force_clean
     echo
@@ -34,3 +36,4 @@ do_clean() {
 export -f do_clean
 
 git-for-each -a -q -- do_clean
+# git-for-each -a -t -- do_clean

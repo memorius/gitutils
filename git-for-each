@@ -82,7 +82,7 @@ run_command_in_dir() {
         if [ "$fail_behaviour" = "--fail-on-missing" ]; then
             usage_error_exit "No such directory: '$FULL_REPOS_DIR'"
         else
-            return
+            return 0
         fi
     fi
     cd "$FULL_REPOS_DIR"

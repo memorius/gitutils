@@ -5,10 +5,10 @@ show_err () {
     err=$?
 
     if [ -n "$EXIT_ON_ERROR_EXITING" ]; then
-        return
+        return 0
     fi
     EXIT_ON_ERROR_EXITING="y"
-    echo 1>&2 "$0: in command '$BASH_COMMAND'
+    echo 1>&2 "$0: in command $BASH_COMMAND
 Error $err occurred, aborting."
 }
 
@@ -20,7 +20,7 @@ print_error () {
 
 exit_with_error () {
     if [ -n "$EXIT_ON_ERROR_EXITING" ]; then
-        return
+        return 0
     fi
     EXIT_ON_ERROR_EXITING="y"
 
