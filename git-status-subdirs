@@ -51,7 +51,6 @@ while getopts ":abBlqrsuv" flag ; do
               show_ahead_commits="y"
               show_behind_commits="y"
               show_summary="y"
-              list_all_branches="y"
               ;;
         ":" ) usage_error_exit "Missing argument to option '$OPTARG'" ;;
         "?" ) usage_error_exit "Unknown commandline option '$OPTARG'" ;;
