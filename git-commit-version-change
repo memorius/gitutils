@@ -1,0 +1,36 @@
+#!/bin/bash
+
+BASEDIR=$(dirname "$0")
+. "$BASEDIR/imports/exit-on-error" || exit 1
+
+usage_print() {
+    print_error "Usage: '$0', or '$0'"
+}
+
+artifact=
+oldversion=
+newversion=
+if [ $# -eq 3 ]; then
+    artifact="$1"
+    oldversion="$2"
+    newversion="$3"
+else
+    echo -n "Enter artifact name (e.g. 'com.aviarc.core'): "
+    read artifact
+
+    echo -n "Enter old version number (e.g. '1.1.2'): "
+    read oldversion
+
+    echo -n "Enter new version number (e.g. '1.1.3-SNAPSHOT'): "
+    read newversion
+fi
+
+if [ -z "$artifact" ]; then
+    usage_error_exit "A non-empty artifact name must be specified"
+elif [ -z "$oldversion" ]; then
+    usage_error_exit "A non-empty old version must be specified"
+elif [ -z "$newversion" ]; then
+    usage_error_exit "A non-empty new version must be specified"
+fi
+
+git commit -m "Update ${artifact}:${oldversion} -> ${newversion}"

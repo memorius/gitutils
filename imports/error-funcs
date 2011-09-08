@@ -35,7 +35,7 @@ exit_with_error () {
 }
 
 # The importing script is expected to define a function called 'usage_print'
-usage_error_exit() {
+usage_error_exit () {
     local message="$1"
 
     if [ -n "$message" ]; then
