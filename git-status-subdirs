@@ -144,7 +144,7 @@ find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d 
             # sed 2: highlight lines with messages indicating they're not suitable for publishing
             ahead_commit_list="
 ${green}$(git log --reverse '--pretty=format:%h  %s' @{upstream}..HEAD | cat -n - | sed -r 's/   ( *)([0-9]+)\t(.*)/\1+\2  \3/' \
-                | sed -r 's/( *[+-][0-9]+  [a-f0-9]+  )(.*(LOCAL|WIP).*)/\1'${backgroundgreen}'\2'${defaultcolor}${green}/)${defaultcolor}"
+                | sed -r 's/( *[+-][0-9]+  [a-f0-9]+  )(.*(LOCAL|WIP|fixup!|squash!).*)/\1'${backgroundgreen}'\2'${defaultcolor}${green}/)${defaultcolor}"
         fi
         if [ -n "$behind" ] && [ -n "$show_behind_commits" ]; then
             # Behind commits, oldest first, numbered from oldest (-n) to newest (-1) by outputting and numbering in newest-first order then reversing.
