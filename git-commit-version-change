@@ -4,7 +4,7 @@ BASEDIR=$(dirname "$0")
 . "$BASEDIR/imports/exit-on-error" || exit 1
 
 usage_print() {
-    print_error "Usage: '$0', or '$0'"
+    print_error "Usage: '$0', or '$0 <artifact> <oldVersion> <newVersion>'"
 }
 
 artifact=
