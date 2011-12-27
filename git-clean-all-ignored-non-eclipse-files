@@ -35,5 +35,5 @@ do_clean() {
 }
 export -f do_clean
 
-git-for-each -a -q -- do_clean
-# git-for-each -a -t -- do_clean
+"$BASEDIR/git-for-each" -a -q -- do_clean
+# "$BASEDIR/git-for-each" -a -t -- do_clean
