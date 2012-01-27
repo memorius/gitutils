@@ -6,22 +6,24 @@
 
 usage_print() {
     print_error "Usage:
-   '$0 [-d (debug)] [-t (trace execution)] [-q (quiet)] <repository> ... -- <command> ...'
-or '$0 [-d (debug)] [-t (trace execution)] [-q (quiet)] -a (all) [-b (only if on a branch)] -- <command> ...'"
+   '$0 [-d (debug)] [-e (ignore command errors)] [-t (trace execution)] [-q (quiet)] <repository> ... -- <command> ...'
+or '$0 [-d (debug)] [-e (ignore command errors)] [-t (trace execution)] [-q (quiet)] -a (all) [-b (only if on a branch)] -- <command> ...'"
 }
 
 [ $# -ge 3 ] || usage_error_exit "Not enough arguments"
 
 all=
+ignore_command_errors=
 only_if_on_branch=
 quiet=
 debug=
 # Note getopt consumes '--' (if it's present) and returns false, leaving OPTIND pointing at the option after '--'
-while getopts ":abdqt" flag ; do
+while getopts ":abdeqt" flag ; do
     case "$flag" in
         "a" ) all="y" ;;
         "b" ) only_if_on_branch="y" ;;
         "d" ) debug="y" ;;
+        "e" ) ignore_command_errors="y" ;;
         "q" ) quiet="y" ;;
         "t" ) set -x ;;
         ":" ) usage_error_exit "Missing argument to option '$OPTARG'" ;;
@@ -95,7 +97,11 @@ run_command_in_dir() {
     if [ -n "$only_if_on_branch" ] && ! git symbolic-ref -q HEAD >/dev/null ; then
         echo "--- Skipping (not on a branch) ---"
     else
-        ( eval "$@" )
+        if [ -n "$ignore_command_errors" ]; then
+            ( eval "$@" ) || true
+        else
+            ( eval "$@" )
+        fi
     fi
 
     [ -n "$quiet" ] || echo
