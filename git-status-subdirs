@@ -143,18 +143,18 @@ find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d 
             # sed 1: strip extra leading spaces from cat output, add minus sign and replace tab with space, preserving the varying leading indentation.
             # sed 2: highlight lines with messages indicating they're not suitable for publishing
             ahead_commit_list="
-${green}$(git log --reverse '--pretty=format:%h  %s' @{upstream}..HEAD | cat -n - | sed -r 's/   ( *)([0-9]+)\t(.*)/\1+\2  \3/' \
-                | sed -r 's/( *[+-][0-9]+  [a-f0-9]+  )(.*(LOCAL|WIP|fixup!|squash!).*)/\1'${backgroundgreen}'\2'${defaultcolor}${green}/)${defaultcolor}"
+${green}$(git log --reverse '--pretty=format:%h %s' @{upstream}..HEAD | cat -n - | sed -r 's/   ( *)([0-9]+)\t([a-z0-9]+) (.*)/\1+\2  \3 : \4/' \
+                | sed -r 's/( *[+-][0-9]+  [a-f0-9]+ : )(.*(LOCAL|WIP|fixup!|squash!).*)/\1'${backgroundgreen}'\2'${defaultcolor}${green}/)${defaultcolor}"
         fi
         if [ -n "$behind" ] && [ -n "$show_behind_commits" ]; then
             # Behind commits, oldest first, numbered from oldest (-n) to newest (-1) by outputting and numbering in newest-first order then reversing.
             # '..' : commits in upstream but not in HEAD
             # cat: number lines
             # sed 1: strip extra leading spaces from cat output, add minus sign and replace tab with space, preserving the varying leading indentation;
-            #        keep only the first 5 chars of the pre-'@' part of the author email address.
+            #        keep only the pre-'@' part of the author email address.
             # sed 2: reverse lines. (tac doesn't work properly here for some reason, screws up last line.)
             behind_commit_list="
-${magenta}$(git log '--pretty=format:%h %ae %s' HEAD..@{upstream} | cat -n - | sed -r 's/   ( *)([0-9]+)\t([a-z0-9]+) ([^@]{0,5})([^ ]*) (.*)/\1-\2  \3  \4  \6/' | sed '1!G;h;$!d')${defaultcolor}"
+${magenta}$(git log '--pretty=format:%h %ae %s' HEAD..@{upstream} | cat -n - | sed -r 's/   ( *)([0-9]+)\t([a-z0-9]+) ([^@ ]*)([^ ]*) (.*)/\1-\2  \3  \4 : \6/' | sed '1!G;h;$!d')${defaultcolor}"
         fi
     fi
 
