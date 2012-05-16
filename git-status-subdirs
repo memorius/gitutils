@@ -106,6 +106,9 @@ find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d 
     [ "$repos_dir" = "$rootdir" ] && repos_dir="." # Give sensible results when script was run in a top-level repos directory
     cd "$full_repos_dir"
 
+    remote_problem=""
+    [ "$(git remote)" = "" ] && remote_problem=" ${brightgreen}(no remote)${defaultcolor}"
+
     commit_count=""
     if [ -n "$show_ahead_behind" ]; then
         # Adapted from /etc/bash_completion.d/git-completion.bash : __git_ps1_show_upstream
@@ -167,7 +170,8 @@ ${magenta}$(git log '--pretty=format:%h %ae %s' HEAD..@{upstream} | cat -n - | s
             || { [ -n "$show_ahead_behind" ] && \
                 {  { [ -n "$show_if_either_ahead_or_behind" ] && [ -n "$commit_count" ] ; } \
                 || { [ -n "$show_if_ahead"  ] && [ -n "$ahead"  ] ; } \
-                || { [ -n "$show_if_behind" ] && [ -n "$behind" ] ; } ; } ; }; then
+                || { [ -n "$show_if_behind" ] && [ -n "$behind" ] ; } ; } ; } \
+            || [ -n "$remote_problem" ]; then
         # set +x
         changes=""
         if [ -n "$status" ]; then
@@ -182,7 +186,7 @@ ${magenta}$(git log '--pretty=format:%h %ae %s' HEAD..@{upstream} | cat -n - | s
             matches "$status" "^[?][?]" \
                     && changes="$changes ${brightyellow}untracked${defaultcolor}"
             [ -z "$changes" ] \
-                    && changes="${backgroundred}UNKNOWN${defaultcolor}"
+                    && changes="${backgroundred}UNKNOWN STATUS${defaultcolor}"
             # Indent status output a little, easier to read
             status="$(echo "$status" | sed 's/.*/  \0/')"
         fi
@@ -195,7 +199,7 @@ ${magenta}$(git log '--pretty=format:%h %ae %s' HEAD..@{upstream} | cat -n - | s
         ref="$(git symbolic-ref -q HEAD)" && branch="${brightblack}${ref#refs/heads/}${defaultcolor}" \
                 || branch="${backgroundred}detached $(git describe --exact-match HEAD 2>/dev/null || git rev-parse --short HEAD)${defaultcolor}"
         # Header line
-        echo "$repos_dir ${branch}${all_other_branches}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
+        echo "$repos_dir ${branch}${all_other_branches}${remote_problem}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
         # In verbose mode, show full summary of changes in each repository
         [ -n "$show_summary" ] && [ -n "$status" ] && echo "$status" | colorlogs git-status-porcelain
     fi
