@@ -109,6 +109,13 @@ find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d 
     remote_problem=""
     [ "$(git remote)" = "" ] && remote_problem=" ${brightgreen}(no remote)${defaultcolor}"
 
+    stashes="$(git stash list | wc -l)"
+    if [ "$stashes" = "0" ]; then
+        stashes=""
+    else
+        stashes=" ${brightmagenta}(stashed: $stashes)${defaultcolor}"
+    fi
+
     commit_count=""
     if [ -n "$show_ahead_behind" ]; then
         # Adapted from /etc/bash_completion.d/git-completion.bash : __git_ps1_show_upstream
@@ -199,7 +206,7 @@ ${magenta}$(git log '--pretty=format:%h %ae %s' HEAD..@{upstream} | cat -n - | s
         ref="$(git symbolic-ref -q HEAD)" && branch="${brightblack}${ref#refs/heads/}${defaultcolor}" \
                 || branch="${backgroundred}detached $(git describe --exact-match HEAD 2>/dev/null || git rev-parse --short HEAD)${defaultcolor}"
         # Header line
-        echo "$repos_dir ${branch}${all_other_branches}${remote_problem}"${changes}"${commit_count}${behind_commit_list}${ahead_commit_list}"
+        echo "$repos_dir ${branch}${all_other_branches}${remote_problem}"${changes}"${commit_count}${stashes}${behind_commit_list}${ahead_commit_list}"
         # In verbose mode, show full summary of changes in each repository
         [ -n "$show_summary" ] && [ -n "$status" ] && echo "$status" | colorlogs git-status-porcelain
     fi
