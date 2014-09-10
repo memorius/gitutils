@@ -4,6 +4,8 @@
 
 # Exit immediately on any command error, even in shell functions / subshells
 # FIXME: with 'set -E', some things cause show_err to be triggered twice with different failure codes. Can't seem to avoid it.
-trap show_err ERR && set -o errexit && set -E
+# Also doesn't work the same on Mac OS X as on Linux.
+#trap show_err ERR && set -o errexit && set -E
+trap show_err ERR && set -o errexit
 # set -o errexit && set -E
 # trap show_err ERR && set -E

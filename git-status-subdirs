@@ -4,6 +4,7 @@
 
 # Exit immediately on any command error, even in shell functions / subshells
 . "$(dirname "$0")/imports/exit-on-error" || exit 1
+. "$(dirname "$0")/imports/sed-crossplatform" || exit 1
 
 usage_print() {
     print_error "Usage: '$0 [-a (ahead)] [-b (behind)] [-B (list all branches)] [-l (local)] [-r (remote)] [-s (file summary)] [-q (quiet)] | [-u (show even unchanged)] [-v (verbose)]'"
@@ -99,9 +100,15 @@ defaultcolor=$'\033[0m'
 
 rootdir="$PWD"
 
+readlink() {
+#    # TODO: use old 'readlink -enq' if not Mac OS?
+    "$(dirname "$0")/imports/realpath.py" "$@" 
+}
+
 find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d $'\0' gitdir ; do
     [ -d "$rootdir/$gitdir/refs" ] || continue # Extra check that it actually contains git metadata and is not just a dir named '.git'
-    full_repos_dir="$(readlink -enq "$rootdir/$gitdir/..")"
+    # echo "$rootdir/$gitdir/.."
+    full_repos_dir="$(readlink "$rootdir/$gitdir/..")"
     repos_dir="${full_repos_dir#$rootdir/}"
     [ "$repos_dir" = "$rootdir" ] && repos_dir="." # Give sensible results when script was run in a top-level repos directory
     cd "$full_repos_dir"
@@ -150,11 +157,11 @@ find . -name ".git" -type d -print0 | sort --zero-terminated | while read -r -d 
             # Ahead commits, oldest first, numbered from oldest (+1) to newest (+n)  by outputting and numbering in oldest-first order.
             # '..' : commits in HEAD but not in upstream
             # cat: number lines
-            # sed 1: strip extra leading spaces from cat output, add minus sign and replace tab with space, preserving the varying leading indentation.
+            # sed 1: strip extra leading spaces from cat output, add plus sign and replace tab with space, preserving the varying leading indentation.
             # sed 2: highlight lines with messages indicating they're not suitable for publishing
             ahead_commit_list="
-${green}$(git log --reverse '--pretty=format:%h %s' @{upstream}..HEAD | cat -n - | sed -r 's/   ( *)([0-9]+)\t([a-z0-9]+) (.*)/\1+\2  \3 : \4/' \
-                | sed -r 's/( *[+-][0-9]+  [a-f0-9]+ : )(.*(LOCAL|WIP|fixup!|squash!).*)/\1'${backgroundgreen}'\2'${defaultcolor}${green}/)${defaultcolor}"
+${green}$(git log --reverse '--pretty=format:%h %s' @{upstream}..HEAD | cat -n - | ${sed_ext_re_cmd} 's/( *)([0-9]+)[[:space:]]+([a-z0-9]+) (.*)/\1+\2  \3 : \4/' \
+                | ${sed_ext_re_cmd} 's/( *[+-][0-9]+  [a-f0-9]+ : )(.*(LOCAL|WIP|fixup!|squash!).*)/\1'${backgroundgreen}'\2'${defaultcolor}${green}/)${defaultcolor}"
         fi
         if [ -n "$behind" ] && [ -n "$show_behind_commits" ]; then
             # Behind commits, oldest first, numbered from oldest (-n) to newest (-1) by outputting and numbering in newest-first order then reversing.
@@ -164,7 +171,7 @@ ${green}$(git log --reverse '--pretty=format:%h %s' @{upstream}..HEAD | cat -n -
             #        keep only the pre-'@' part of the author email address.
             # sed 2: reverse lines. (tac doesn't work properly here for some reason, screws up last line.)
             behind_commit_list="
-${magenta}$(git log '--pretty=format:%h %ae %s' HEAD..@{upstream} | cat -n - | sed -r 's/   ( *)([0-9]+)\t([a-z0-9]+) ([^@ ]*)([^ ]*) (.*)/\1-\2  \3  \4 : \6/' | sed '1!G;h;$!d')${defaultcolor}"
+${magenta}$(git log '--pretty=format:%h %ae %s' HEAD..@{upstream} | cat -n - | ${sed_ext_re_cmd} 's/( *)([0-9]+)[[:space:]]+([a-z0-9]+) ([^@ ]*)([^ ]*) (.*)/\1-\2  \3  \4 : \6/' | sed '1!G;h;$!d')${defaultcolor}"
         fi
     fi
 
